@@ -1,0 +1,20 @@
+services:
+  content-calendar:
+    build: .
+    container_name: content-calendar
+    restart: unless-stopped
+    ports:
+      - "3333:3333"
+    volumes:
+      - ./data:/app/data
+      - ./public:/app/public
+      - ./server.js:/app/server.js
+    environment:
+      - NODE_ENV=production
+      - PORT=3333
+      - DB_PATH=/app/data/calendar.db
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

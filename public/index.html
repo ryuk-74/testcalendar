@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تقویم محتوایی | Content Calendar</title>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Vazirmatn', sans-serif; }
+
+        :root {
+            --bg-primary:    #f8fafc;
+            --bg-secondary:  #ffffff;
+            --bg-card:       #ffffff;
+            --text-primary:  #1e293b;
+            --text-secondary:#64748b;
+            --border-color:  #e2e8f0;
+
+            --color-instagram-post:  #b298dc;
+            --color-instagram-reels: #9b6fd6;
+            --color-instagram-story: #c9b3e8;
+            --color-website-post:    #90a955;
+            --color-messenger-post:  #00a6fb;
+        }
+        .dark {
+            --bg-primary:    #1a1a2e;
+            --bg-secondary:  #16213e;
+            --bg-card:       #0f3460;
+            --text-primary:  #ffffff;
+            --text-secondary:#a0a0a0;
+            --border-color:  #1f4068;
+
+            --color-instagram-post:  #a663cc;
+            --color-instagram-reels: #8e4eb8;
+            --color-instagram-story: #c084e0;
+            --color-website-post:    #4f772d;
+            --color-messenger-post:  #006494;
+        }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: all 0.3s;
+        }
+        .card-bg { background: var(--bg-card); border-color: var(--border-color); }
+        .secondary-bg { background: var(--bg-secondary); }
+        .text-secondary-custom { color: var(--text-secondary); }
+
+        .scrollbar-thin::-webkit-scrollbar { width: 4px; height: 4px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: var(--bg-secondary); border-radius: 2px; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 2px; }
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #4f46e5; }
+
+        .task-item {
+            transition: all 0.2s;
+            border-left: 4px solid transparent;
+        }
+        .task-item.platform-instagram.type-post {
+            background-color: var(--color-instagram-post);
+        }
+        .task-item.platform-instagram.type-reels {
+            background-color: var(--color-instagram-reels);
+        }
+        .task-item.platform-instagram.type-story {
+            background-color: var(--color-instagram-story);
+        }
+        .task-item.platform-website.type-post {
+            background-color: var(--color-website-post);
+        }
+        .task-item.platform-messenger.type-post {
+            background-color: var(--color-messenger-post);
+        }
+
+        .day-cell { min-height: 120px; }
+        @media (max-width: 768px) { .day-cell { min-height: 80px; } }
+
+        .modal-overlay { backdrop-filter: blur(4px); }
+        
+        .file-preview { max-height: 200px; object-fit: contain; }
+        .file-upload-zone {
+            border: 2px dashed var(--border-color);
+            transition: all 0.3s;
+        }
+        .file-upload-zone:hover,
+        .file-upload-zone.dragover {
+            border-color: #6366f1;
+            background: rgba(99,102,241,0.1);
+        }
+
+        .has-file { position: relative; }
+        .has-file::before {
+            content: '📎';
+            position: absolute;
+            top: 1px;
+            left: 1px;
+            font-size: 8px;
+            line-height: 1;
+        }
+
+        .task-scroll-container {
+            max-height: calc(100% - 28px);
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        @media (min-width: 768px) {
+            .task-scroll-container { max-height: calc(100% - 32px); }
+        }</style>
+</head>
+<body class="min-h-screen">
+
+    <!-- Header -->
+    <header class="secondary-bg shadow-lg sticky top-0 z-40 border-b border-gray-200 dark:border-gray-700">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <span class="text-3xl">📅</span>
+                    <h1 class="text-xl md:text-2xl font-bold bg-gradient-to-l from-indigo-500 to-purple-600 bg-clip-text text-transparent">تقویم محتوایی</h1>
+                </div>
+                <div class="flex items-center gap-2 md:gap-4">
+                    <button onclick="openSearchModal()"       class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition" title="جستجو">🔍</button>
+                    <button onclick="openGoalsModal()"        class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition" title="اهداف محتوایی">🎯</button>
+                    <button onclick="openColorSettingsModal()" class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition" title="تنظیمات رنگ">🎨</button>
+                    <button onclick="openStatsModal()"        class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition" title="آمار">📊</button>
+                    <button onclick="openFileManagerModal()"  class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition" title="مدیریت فایل‌ها">📁</button>
+                    <button onclick="exportToCSV()"           class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition" title="خروجی CSV">📥</button>
+                    <button onclick="openBackupModal()"       class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition" title="پشتیبان‌گیری">💾</button>
+                    <button onclick="toggleTheme()" id="themeBtn" class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition" title="تغییر تم">🌙</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Filters -->
+    <div class="secondary-bg border-b border-gray-200 dark:border-gray-700">
+        <div class="container mx-auto px-4 py-3">
+            <div class="flex flex-wrap items-center gap-3">
+                <span class="text-sm font-medium">فیلتر:</span>
+                <select id="filterPlatform" onchange="renderCalendar()" class="text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-gray-800 dark:text-gray-200">
+                    <option value="all">همه پلتفرم‌ها</option>
+                    <option value="instagram">اینستاگرام</option>
+                    <option value="website">وبسایت</option>
+                    <option value="messenger">کانال پیام‌رسان</option>
+                </select>
+                <select id="filterStatus" onchange="renderCalendar()" class="text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-gray-800 dark:text-gray-200">
+                    <option value="all">همه وضعیت‌ها</option>
+                    <option value="idea">ایده</option>
+                    <option value="writing">در حال نوشتن</option>
+                    <option value="ready">آماده انتشار</option>
+                    <option value="published">منتشر شده</option>
+                </select>
+                <select id="filterType" onchange="renderCalendar()" class="text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-gray-800 dark:text-gray-200">
+                    <option value="all">همه انواع</option>
+                    <option value="post">پست</option>
+                    <option value="story">استوری</option>
+                    <option value="reels">ریلز</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main -->
+    <main class="container mx-auto px-4 py-6">
+        <div class="flex items-center justify-between mb-6">
+            <button onclick="prevMonth()" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white transition">
+                <span>←</span><span class="hidden sm:inline">ماه قبل</span>
+            </button>
+            <div class="text-center">
+                <h2 id="currentMonth" class="text-xl md:text-2xl font-bold"></h2>
+                <button onclick="goToToday()" class="text-sm text-indigo-500 hover:underline mt-1">برو به امروز</button>
+            </div>
+            <button onclick="nextMonth()" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white transition">
+                <span class="hidden sm:inline">ماه بعد</span><span>→</span>
+            </button>
+        </div>
+
+        <div class="card-bg rounded-2xl shadow-xl overflow-hidden border">
+            <div class="grid grid-cols-7 bg-gradient-to-l from-indigo-500 to-purple-600 text-white">
+                <div class="p-3 text-center font-medium text-sm md:text-base">شنبه</div>
+                <div class="p-3 text-center font-medium text-sm md:text-base">یکشنبه</div>
+                <div class="p-3 text-center font-medium text-sm md:text-base">دوشنبه</div>
+                <div class="p-3 text-center font-medium text-sm md:text-base">سه‌شنبه</div>
+                <div class="p-3 text-center font-medium text-sm md:text-base">چهارشنبه</div>
+                <div class="p-3 text-center font-medium text-sm md:text-base">پنج‌شنبه</div>
+                <div class="p-3 text-center font-medium text-sm md:text-base text-red-200">جمعه</div>
+            </div>
+            <div id="calendarGrid" class="grid grid-cols-7"></div>
+        </div>
+    </main>
+
+    <!-- FAB -->
+    <button onclick="openTaskModal()" class="fixed bottom-6 left-6 w-14 h-14 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 flex items-center justify-center text-2xl z-50">+</button>
+
+    <!-- Task Modal -->
+    <div id="taskModal" class="fixed inset-0 bg-black/50 modal-overlay hidden items-center justify-center z-50 p-4">
+        <div class="secondary-bg rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-thin">
+            <div class="sticky top-0 secondary-bg border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between z-10">
+                <h3 id="modalTitle" class="text-lg font-bold">افزودن کار جدید</h3>
+                <button onclick="closeTaskModal()" class="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition">✕</button>
+            </div>
+            <form id="taskForm" class="p-4 space-y-4">
+                <input type="hidden" id="taskId">
+                <input type="hidden" id="taskFileId">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium mb-1">عنوان کار *</label>
+                        <input type="text" id="taskTitle" required class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">تاریخ *</label>
+                        <input type="text" id="taskDate" required placeholder="1403/01/15" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">ساعت انتشار</label>
+                        <input type="time" id="taskTime" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">پلتفرم *</label>
+                        <div id="platformCheckboxes" class="flex flex-wrap gap-2">
+                            <label class="flex items-center gap-1.5 cursor-pointer px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 has-[:checked]:bg-indigo-500 has-[:checked]:text-white has-[:checked]:border-indigo-500 transition text-sm">
+                                <input type="checkbox" name="platform" value="instagram" class="hidden" onchange="updateTypeOptions()"> <img src="icons/instagram.svg"   class="inline w-4 h-4 mr-1"> اینستاگرام
+                            </label>
+                            <label class="flex items-center gap-1.5 cursor-pointer px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 has-[:checked]:bg-indigo-500 has-[:checked]:text-white has-[:checked]:border-indigo-500 transition text-sm">
+                                <input type="checkbox" name="platform" value="website" class="hidden" onchange="updateTypeOptions()"> <img src="icons/website.svg"   class="inline w-4 h-4 mr-1"> وبسایت
+                            </label>
+                            <label class="flex items-center gap-1.5 cursor-pointer px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 has-[:checked]:bg-indigo-500 has-[:checked]:text-white has-[:checked]:border-indigo-500 transition text-sm">
+                                <input type="checkbox" name="platform" value="messenger" class="hidden" onchange="updateTypeOptions()"> <img src="icons/telegram.svg"   class="inline w-4 h-4 mr-1"> کانال پیام‌رسان
+                            </label>
+                        </div>
+                        <p id="platformError" class="text-red-500 text-xs mt-1 hidden">حداقل یک پلتفرم انتخاب کنید</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">نوع محتوا *</label>
+                        <div id="typeCheckboxes" class="flex flex-wrap gap-2">
+                            <p class="text-sm text-gray-400 dark:text-gray-500">ابتدا پلتفرم را انتخاب کنید</p>
+                        </div>
+                        <p id="typeError" class="text-red-500 text-xs mt-1 hidden">حداقل یک نوع محتوا انتخاب کنید</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-1">وضعیت</label>
+                        <select id="taskStatus" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <option value="idea">ایده</option>
+                            <option value="writing">در حال نوشتن</option>
+                            <option value="ready">آماده انتشار</option>
+                            <option value="published">منتشر شده</option>
+                        </select>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium mb-2">📎 فایل پست (تصویر/ویدیو)</label>
+                        <div id="fileUploadZone" class="file-upload-zone rounded-lg p-6 text-center cursor-pointer"
+                             onclick="document.getElementById('taskFile').click()"
+                             ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleFileDrop(event)">
+                            <input type="file" id="taskFile" accept="image/*,video/*" onchange="handleFileSelect(event)" class="hidden">
+                            <div id="filePreviewContainer" class="hidden">
+                                <div id="filePreview" class="mb-2"></div>
+                                <p id="fileName" class="text-sm text-secondary-custom"></p>
+                                <button type="button" onclick="event.stopPropagation(); removeFile()" class="mt-2 text-red-500 hover:text-red-700 text-sm">🗑️ حذف فایل</button>
+                            </div>
+                            <div id="fileUploadPrompt">
+                                <span class="text-4xl mb-2 block">📤</span>
+                                <p class="text-sm text-secondary-custom">کلیک کنید یا فایل را اینجا رها کنید</p>
+                <p class="text-xs text-secondary-custom mt-1">تصویر یا ویدیو</p>
+                            </div>
+                        </div><div id="uploadProgress" class="hidden mt-2">
+                            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                <div id="uploadProgressBar" class="bg-indigo-500 h-2 rounded-full transition-all" style="width: 0%"></div>
+                            </div><p id="uploadProgressText" class="text-xs text-center mt-1 text-secondary-custom">در حال پردازش...</p>
+                        </div>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium mb-1">برچسب‌ها (با کاما جدا کنید)</label>
+                        <input type="text" id="taskTags" placeholder="آموزشی، معرفی محصول" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium mb-1">یادداشت</label>
+                        <textarea id="taskNote" rows="3" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none resize-none"></textarea>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium mb-2">چک‌لیست</label>
+                        <div id="checklistContainer" class="space-y-2 mb-2"></div>
+                        <button type="button" onclick="addChecklistItem()" class="text-sm text-indigo-500 hover:underline">+ افزودن آیتم</button>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <button type="submit" class="flex-1 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:opacity-90 transition font-medium">ذخیره</button>
+                    <button type="button" onclick="closeTaskModal()" class="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">انصراف</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="api-client.js"></script>
+    <script src="calendar.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async function () {
+            // Check server connection and show indicator
+            const connected = await checkServerConnection();
+            showConnectionStatus(connected);
+
+            await window.initDB();
+            await window.loadTasksFromServer();
+            if (window.loadGoals) await window.loadGoals();
+            if (window.loadColorSettings) await window.loadColorSettings();
+
+            const today = new Date();
+            const [jy, jm] = gregorianToJalali(today.getFullYear(), today.getMonth() + 1, today.getDate());
+            currentYear = jy;
+            currentMonth = jm;
+
+            if (isDarkMode) {
+                document.documentElement.classList.add('dark');
+                document.documentElement.classList.remove('light');
+                document.getElementById('themeBtn').textContent = '☀️';
+            }
+
+            renderCalendar();
+            setTimeout(() => checkPendingPublications(), 1000);
+        });
+    </script>
+
+</body>
+</html>
