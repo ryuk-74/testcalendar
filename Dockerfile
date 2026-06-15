@@ -9,7 +9,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install production dependencies only
-RUN npm ci --omit=dev
+RUN npm install --only=production
 
 # Copy project files
 COPY . .
@@ -22,6 +22,6 @@ EXPOSE 3333
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -qO- http://localhost:3333/api/health || exit 1
+  CMD wget -qO- http://localhost:3333/api/server-info || exit 1
 
 CMD ["node", "server.js"]
