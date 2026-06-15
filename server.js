@@ -60,6 +60,7 @@ function initDatabase() {
       publishConfirmed INTEGER DEFAULT 0,
       publishedAt INTEGER,
       lastCheckTime INTEGER,
+      goalId TEXT,
       createdAt INTEGER,
       updatedAt INTEGER
     )`, (err) => {
@@ -81,13 +82,10 @@ function initDatabase() {
 
     db.run(`CREATE TABLE IF NOT EXISTS goals (
       id TEXT PRIMARY KEY,
-      parentId TEXT,
-      name TEXT NOT NULL,
       platform TEXT NOT NULL,
       type TEXT NOT NULL,
       season TEXT NOT NULL,
-      category TEXT,
-      targetCount INTEGER,
+      targetCount INTEGER NOT NULL,
       createdAt INTEGER,
       updatedAt INTEGER
     )`, (err) => {
@@ -175,169 +173,85 @@ app.post('/api/tasks', (req, res) => {
   const task = req.body;
   const now = Date.now();
   
-  // Try new format first, fallback to old format if needed
-  const checkSchema = () => {
-    db.all("PRAGMA table_info(tasks)", [], (err, columns) => {
-      const hasPriority = columns?.some(col => col.name === 'priority');
-      insertTask(hasPriority);
-    });
-  };
-
-  const insertTask = (hasPriority) => {
-    let sql, params;
-    
-    if (hasPriority) {
-      // Old schema with priority
-      sql = `INSERT INTO tasks (
-        id, title, date, time, platform, type, status, priority,
-        tags, note, checklist, fileId, fileDeleted, publishConfirmed,
-        publishedAt, lastCheckTime, createdAt, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-      
-      params = [
-        task.id || Date.now().toString(),
-        task.title,
-        task.date,
-        task.time || null,
-        task.platform,
-        task.type,
-        task.status,
-        task.priority || 'medium', // Default priority
-        JSON.stringify(task.tags || []),
-        task.note || null,
-        JSON.stringify(task.checklist || []),
-        task.fileId || null,
-        task.fileDeleted ? 1 : 0,
-        task.publishConfirmed ? 1 : 0,
-        task.publishedAt || null,
-        task.lastCheckTime || null,
-        now,
-        now
-      ];
-    } else {
-      // New schema without priority
-      sql = `INSERT INTO tasks (
-        id, title, date, time, platform, type, status,
-        tags, note, checklist, fileId, fileDeleted, publishConfirmed,
-        publishedAt, lastCheckTime, createdAt, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-      
-      params = [
-        task.id || Date.now().toString(),
-        task.title,
-        task.date,
-        task.time || null,
-        task.platform,
-        task.type,
-        task.status,
-        JSON.stringify(task.tags || []),
-        task.note || null,
-        JSON.stringify(task.checklist || []),
-        task.fileId || null,
-        task.fileDeleted ? 1 : 0,
-        task.publishConfirmed ? 1 : 0,
-        task.publishedAt || null,
-        task.lastCheckTime || null,
-        now,
-        now
-      ];
-    }
-    
-    db.run(sql, params, function(err) {
-      if (err) {
-        console.error('Error creating task:', err);
-        return res.status(500).json({ error: err.message });
-      }
-      console.log('✅ Task created:', params[0]);
-      res.json({ id: params[0], message: 'Task created successfully' });
-    });
-  };
+  const sql = `INSERT INTO tasks (
+    id, title, date, time, platform, type, status,
+    tags, note, checklist, fileId, fileDeleted, publishConfirmed,
+    publishedAt, lastCheckTime, goalId, createdAt, updatedAt
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
   
-  checkSchema();
+  const params = [
+    task.id || Date.now().toString(),
+    task.title,
+    task.date,
+    task.time || null,
+    task.platform,
+    task.type,
+    task.status,
+    JSON.stringify(task.tags || []),
+    task.note || null,
+    JSON.stringify(task.checklist || []),
+    task.fileId || null,
+    task.fileDeleted ? 1 : 0,
+    task.publishConfirmed ? 1 : 0,
+    task.publishedAt || null,
+    task.lastCheckTime || null,
+    task.goalId || null,
+    now,
+    now
+  ];
+  
+  db.run(sql, params, function(err) {
+    if (err) {
+      console.error('Error creating task:', err);
+      return res.status(500).json({ error: err.message });
+    }
+    console.log('✅ Task created:', params[0]);
+    res.json({ id: params[0], message: 'Task created successfully' });
+  });
 });
 
 app.put('/api/tasks/:id', (req, res) => {
   const task = req.body;
   const now = Date.now();
   
-  // Check schema
-  db.all("PRAGMA table_info(tasks)", [], (err, columns) => {
-    const hasPriority = columns?.some(col => col.name === 'priority');
-    updateTask(hasPriority);
-  });
-
-  const updateTask = (hasPriority) => {
-    let sql, params;
-    
-    if (hasPriority) {
-      // Old schema with priority
-      sql = `UPDATE tasks SET
-        title = ?, date = ?, time = ?, platform = ?, type = ?,
-        status = ?, priority = ?, tags = ?, note = ?, checklist = ?,
-        fileId = ?, fileDeleted = ?, publishConfirmed = ?,
-        publishedAt = ?, lastCheckTime = ?, updatedAt = ?
-        WHERE id = ?`;
-      
-      params = [
-        task.title,
-        task.date,
-        task.time || null,
-        task.platform,
-        task.type,
-        task.status,
-        task.priority || 'medium',
-        JSON.stringify(task.tags || []),
-        task.note || null,
-        JSON.stringify(task.checklist || []),
-        task.fileId || null,
-        task.fileDeleted ? 1 : 0,
-        task.publishConfirmed ? 1 : 0,
-        task.publishedAt || null,
-        task.lastCheckTime || null,
-        now,
-        req.params.id
-      ];
-    } else {
-      // New schema without priority
-      sql = `UPDATE tasks SET
-        title = ?, date = ?, time = ?, platform = ?, type = ?,
-        status = ?, tags = ?, note = ?, checklist = ?,
-        fileId = ?, fileDeleted = ?, publishConfirmed = ?,
-        publishedAt = ?, lastCheckTime = ?, updatedAt = ?
-        WHERE id = ?`;
-      
-      params = [
-        task.title,
-        task.date,
-        task.time || null,
-        task.platform,
-        task.type,
-        task.status,
-        JSON.stringify(task.tags || []),
-        task.note || null,
-        JSON.stringify(task.checklist || []),
-        task.fileId || null,
-        task.fileDeleted ? 1 : 0,
-        task.publishConfirmed ? 1 : 0,
-        task.publishedAt || null,
-        task.lastCheckTime || null,
-        now,
-        req.params.id
-      ];
+  const sql = `UPDATE tasks SET
+    title = ?, date = ?, time = ?, platform = ?, type = ?,
+    status = ?, tags = ?, note = ?, checklist = ?,
+    fileId = ?, fileDeleted = ?, publishConfirmed = ?,
+    publishedAt = ?, lastCheckTime = ?, goalId = ?, updatedAt = ?
+    WHERE id = ?`;
+  
+  const params = [
+    task.title,
+    task.date,
+    task.time || null,
+    task.platform,
+    task.type,
+    task.status,
+    JSON.stringify(task.tags || []),
+    task.note || null,
+    JSON.stringify(task.checklist || []),
+    task.fileId || null,
+    task.fileDeleted ? 1 : 0,
+    task.publishConfirmed ? 1 : 0,
+    task.publishedAt || null,
+    task.lastCheckTime || null,
+    task.goalId || null,
+    now,
+    req.params.id
+  ];
+  
+  db.run(sql, params, function(err) {
+    if (err) {
+      console.error('Error updating task:', err);
+      return res.status(500).json({ error: err.message });
     }
-    
-    db.run(sql, params, function(err) {
-      if (err) {
-        console.error('Error updating task:', err);
-        return res.status(500).json({ error: err.message });
-      }
-      if (this.changes === 0) {
-        return res.status(404).json({ error: 'Task not found' });
-      }
-      console.log('✅ Task updated:', req.params.id);
-      res.json({ message: 'Task updated successfully' });
-    });
-  };
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+    console.log('✅ Task updated:', req.params.id);
+    res.json({ message: 'Task updated successfully' });
+  });
 });
 
 app.delete('/api/tasks/:id', (req, res) => {
@@ -470,8 +384,8 @@ app.post('/api/restore', (req, res) => {
         const taskStmt = db.prepare(`INSERT INTO tasks (
           id, title, date, time, platform, type, status,
           tags, note, checklist, fileId, fileDeleted, publishConfirmed,
-          publishedAt, lastCheckTime, createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+          publishedAt, lastCheckTime, goalId, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
         
         tasks.forEach(task => {
           taskStmt.run([
@@ -490,6 +404,7 @@ app.post('/api/restore', (req, res) => {
             task.publishConfirmed ? 1 : 0,
             task.publishedAt || null,
             task.lastCheckTime || null,
+            task.goalId || null,
             task.createdAt || Date.now(),
             task.updatedAt || Date.now()
           ]);
@@ -552,9 +467,33 @@ app.get('/api/stats', (req, res) => {
 // ============ GOALS API ============
 
 app.get('/api/goals', (req, res) => {
-  db.all('SELECT * FROM goals ORDER BY parentId, name', [], (err, rows) => {
+  db.all('SELECT * FROM goals ORDER BY platform, season, type', [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(rows);
+  });
+});
+
+// دریافت یک goal با stats آن
+app.get('/api/goals/:id', (req, res) => {
+  db.get('SELECT * FROM goals WHERE id = ?', [req.params.id], (err, goal) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!goal) return res.status(404).json({ error: 'Goal not found' });
+    
+    // محاسبه تعداد tasks متصل
+    db.get('SELECT COUNT(*) as count FROM tasks WHERE goalId = ?', [req.params.id], (err, row) => {
+      if (err) return res.status(500).json({ error: err.message });
+      
+      const stats = {
+        target: goal.targetCount,
+        completed: row ? row.count : 0,
+        isOver: (row ? row.count : 0) > goal.targetCount
+      };
+      
+      res.json({
+        ...goal,
+        stats
+      });
+    });
   });
 });
 
@@ -563,24 +502,22 @@ app.post('/api/goals', (req, res) => {
   const now = Date.now();
   const id = goal.id || Date.now().toString();
 
-  const sql = `INSERT INTO goals (id, parentId, name, platform, type, season, category, targetCount, createdAt, updatedAt)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  const sql = `INSERT INTO goals (id, platform, type, season, targetCount, createdAt, updatedAt)
+               VALUES (?, ?, ?, ?, ?, ?, ?)`;
   
   const params = [
     id,
-    goal.parentId || null,
-    goal.name,
     goal.platform,
     goal.type,
     goal.season,
-    goal.category || null,
-    goal.targetCount || null,
+    goal.targetCount || 0,
     now,
     now
   ];
 
   db.run(sql, params, function(err) {
     if (err) return res.status(500).json({ error: err.message });
+    console.log('✅ Goal created:', id);
     res.json({ id, message: 'Goal created' });
   });
 });
@@ -589,30 +526,69 @@ app.put('/api/goals/:id', (req, res) => {
   const goal = req.body;
   const now = Date.now();
 
-  const sql = `UPDATE goals SET name = ?, platform = ?, type = ?, season = ?, category = ?, targetCount = ?, updatedAt = ? WHERE id = ?`;
+  // فقط targetCount را تغییر می‌دهیم
+  const sql = `UPDATE goals SET targetCount = ?, updatedAt = ? WHERE id = ?`;
   
   const params = [
-    goal.name,
-    goal.platform,
-    goal.type,
-    goal.season,
-    goal.category || null,
-    goal.targetCount || null,
+    goal.targetCount,
     now,
     req.params.id
   ];
 
   db.run(sql, params, function(err) {
     if (err) return res.status(500).json({ error: err.message });
+    if (this.changes === 0) return res.status(404).json({ error: 'Goal not found' });
+    console.log('✅ Goal updated:', req.params.id);
     res.json({ message: 'Goal updated' });
   });
 });
 
 app.delete('/api/goals/:id', (req, res) => {
-  db.run('DELETE FROM goals WHERE id = ? OR parentId = ?', [req.params.id, req.params.id], function(err) {
+  // حذف goal و قطع اتصال tasks
+  db.run('UPDATE tasks SET goalId = NULL WHERE goalId = ?', [req.params.id], (err) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json({ message: 'Goal deleted' });
+    
+    db.run('DELETE FROM goals WHERE id = ?', [req.params.id], function(err) {
+      if (err) return res.status(500).json({ error: err.message });
+      console.log('✅ Goal deleted:', req.params.id);
+      res.json({ message: 'Goal deleted' });
+    });
   });
+});
+
+// دریافت stats برای تمام goals یک پلتفرم و فصل
+app.get('/api/goals/stats/by-platform', (req, res) => {
+  const { platform, season } = req.query;
+  
+  if (!platform || !season) {
+    return res.status(400).json({ error: 'platform and season are required' });
+  }
+
+  db.all(
+    `SELECT g.id, g.platform, g.season, g.type, g.targetCount, 
+            (SELECT COUNT(*) FROM tasks WHERE goalId = g.id) as completed
+     FROM goals g
+     WHERE g.platform = ? AND g.season = ?
+     ORDER BY g.type`,
+    [platform, season],
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      
+      const stats = rows.map(row => ({
+        goalId: row.id,
+        type: row.type,
+        target: row.targetCount,
+        completed: row.completed || 0,
+        isOver: (row.completed || 0) > row.targetCount
+      }));
+      
+      res.json({
+        platform,
+        season,
+        goals: stats
+      });
+    }
+  );
 });
 
 // ============ COLOR SETTINGS ============
