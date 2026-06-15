@@ -378,9 +378,7 @@ function showServerInfoModal() {
     urlsHTML += `
       <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-card); border-radius: 8px; margin-bottom: 8px; border: 1px solid var(--border-color);">
         <span style="flex: 1; font-family: monospace; font-size: 14px;">${url}</span>
-        <button onclick="copyToClipboard('${url}')" style="padding: 6px 12px; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.2s;">
-          📋 کپی
-        </button>
+        <button onclick="copyToClipboard('${url}')" style="padding: 6px 12px; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.2s;">📋 کپی</button>
       </div>
     `;
   });
@@ -388,7 +386,7 @@ function showServerInfoModal() {
   content.innerHTML = `
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
       <h3 style="margin: 0; font-size: 18px; font-weight: bold;">📡 اطلاعات اتصال</h3>
-      <button onclick="document.getElementById('serverInfoModal').remove()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-primary); padding: 4px 8px;">×</button>
+      <button onclick="document.getElementById('serverInfoModal').remove()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-primary); padding: 4px 8px;">✕</button>
     </div>
     
     <p style="margin-bottom: 16px; color: var(--text-secondary); font-size: 14px;">
